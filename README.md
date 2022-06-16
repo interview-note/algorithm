@@ -434,3 +434,37 @@ int totalSteps(vector<int>& nums) {
 
 解决滑动窗口相关问题。
 </details>
+
+## 字符串
+
+<details>
+<summary>什么是KMP算法？原理是怎样的？前缀函数(next数组)如何构建？</summary>
+
+[B站介绍视频](https://www.bilibili.com/video/BV18k4y1m7Ar?p=1&vd_source=793117e7c9233027da3ab9fe378f9bca)
+
+想要解决的问题：查找字符串p在字符串s中第一次出现的位置。时间复杂度$O(m + n)$,m和n为p和s的长度。
+
+原理：构造前缀函数(next数组)，即在j处发生不匹配时，应该跳转到next[j]继续执行匹配。
+```cpp
+// LC 28. 实现 strStr()
+int strStr(string s, string p) {
+    int n = s.size(), m = p.size();
+    s = ' ' + s, p = ' ' + p;
+    vector<int> next(m + 1, 0);
+    // 构建 next 数组
+    for(int i = 2, j = 0; i <= m; i++) {
+        // j 向前跳转到 p[0, i - 1] 中下一个前后缀相同的位置
+        // 判断 p[j+1] 是否等于 p[i]
+        while(j != 0 && p[i] != p[j + 1]) j = next[j];
+        if(p[i] == p[j + 1]) j++;
+        next[i] = j;
+    }
+    for(int i = 1, j = 0; i <= n; i++){
+        while(j != 0 && s[i] != p[j + 1]) j = next[j];
+        if(s[i] == p[j + 1]) j++;
+        if(j == m) return i - m; // 匹配到结尾
+    }
+    return -1;
+}
+```
+</details>

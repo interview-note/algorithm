@@ -402,6 +402,138 @@ int totalSteps(vector<int>& _nums) {
 ```
 </details>
 
+<details>
+<summary>如何加速“结构体+指针”类型的链表？</summary>
+
+可以设计一个内存池`array<T, N> pool`，预先开足够的空间，避免每次执行`new`操作。 $N$为提前开辟的节点数，用`offer()`代替`new()`。
+```cpp
+template <typename T, std::size_t N = 50000> 
+struct memory_pool {
+  std::array<T, N> pool = {};
+  std::size_t ptr;
+  memory_pool() : pool{}, ptr(0) {}
+  T *offer() { return &pool[ptr++]; }
+};
+```
+</details>
+
+<details>
+<summary>什么是跳表？如何实现？各个操作的时间复杂度是多少？</summary>
+
+跳表是在$O(logn)$时间内完成**增加**、**删除**、**搜索**操作的数据结构。跳表相比于树堆与红黑树，其功能与性能相当，并且跳表的代码长度相较下更短，其设计思想与链表相似。
+
+平时很少会用到，因为C++ STL库中底层为平衡树的`set`也能实现如上操作，同样能维护内部数据有序。
+
+```cpp
+// LC 1206. 设计跳表
+template <typename T, std::size_t N = 50000> 
+struct memory_pool {
+    std::array<T, N> pool = {};
+    std::size_t ptr;
+    memory_pool() : pool{}, ptr(0) {}
+    T *offer() { return &pool[ptr++]; }
+};
+
+struct node {
+    node *right, *down;
+    int val;
+};
+
+class Skiplist {
+private:
+    node* head;
+    memory_pool<node> pool;
+    node* make_node(node* right, node* down, int val) {
+        auto p = pool.offer();
+        p->right = right, p->down = down, p->val = val;
+        return p;
+    }
+
+public:
+    Skiplist() : pool() {
+        head = make_node(nullptr, nullptr, -1);
+    }
+        
+    vector<node*> path(int target) {
+        vector<node*> res;
+        auto p = head;
+        while(p != nullptr) {
+            while(p->right != nullptr && p->right->val < target) p = p->right;
+            res.push_back(p);
+            p = p->down;
+        }
+        return res;
+    }
+
+    bool search(int target) {
+        auto p = path(target).back();
+        if(p->right != nullptr && p->right->val == target) return true;
+        return false;
+    }
+    
+    node* insert(node* p, node* last, int num){
+        // 在 p 后面增加一个节点
+        p->right = make_node(p->right, last, num);
+        return p->right;
+    }
+
+    void add(int num) {
+        auto down_path = path(num);
+        auto p = down_path.back();
+        node* last = nullptr;
+        bool first = true;
+        while(first || rand() % 2 == 1) {
+            first = false;
+            if(down_path.empty()) { // 增加一层
+                head = make_node(make_node(nullptr, last, num), head, -1);
+                last = head->right;
+            }else { // 从底层往上插
+                p = down_path.back();
+                last = insert(p, last, num);
+                down_path.pop_back();
+            }
+        }
+    }
+    
+    bool erase(int num) {
+        bool flag = false;
+        auto down_path = path(num);
+        for(auto p : down_path) {
+            if(p->right && p->right->val == num) {
+                p->right = p->right->right;
+                flag = true;
+            }
+        }
+        return flag;
+    }
+};
+```
+
+使用STL multiset 实现：
+```cpp
+class Skiplist {
+private:
+    multiset<int> st;
+
+public:
+    Skiplist(){}
+    
+    bool search(int target) {
+        return st.count(target);
+    }
+
+    void add(int num) {
+        st.insert(num);
+    }
+    
+    bool erase(int num) {
+        if(!search(num)) return false;
+        st.erase(st.find(num)); // 传值会删除所有等于 num 的元素
+        return true;
+    }
+};
+```
+</details>
 
 ## 7 单调栈/队列
 <details>
@@ -435,7 +567,7 @@ int totalSteps(vector<int>& nums) {
 解决滑动窗口相关问题。
 </details>
 
-## 字符串
+## 8 字符串
 
 <details>
 <summary>什么是KMP算法？原理是怎样的？前缀函数(next数组)如何构建？</summary>
@@ -466,5 +598,219 @@ int strStr(string s, string p) {
     }
     return -1;
 }
+```
+</details>
+
+<details>
+<summary>什么是字典树？有哪些应用场景？有哪些实现方法？</summary>
+
+字典树又叫做前缀树、Trie树，是一种高效存储字符串的数据结构。
+
+应用场景：需要快速**动态查询**某个某个字符串出现的次数或是否为某个字符串的**前缀**。
+需要支持**插入**和**查询**两个操作，时间复杂度为$O(k)$， k为字符串长度。
+
+实现方法：
+
+(1) **静态模拟**，通过静态数组(结构体)模拟，需要提前开辟足够的空间。
+```cpp
+// LC 208. 实现 Trie (前缀树)
+class Trie {
+private:
+    vector<int> exist;
+    vector<array<int, 26>> next;
+    int idx = 1;
+public:
+    Trie() {
+        exist.resize(100010), next.resize(100010);
+    }
+    
+    void insert(string word) {
+        int p = 0;
+        for(auto c : word) {
+            if(next[p][c - 'a']) p = next[p][c - 'a'];
+            else next[p][c - 'a'] = idx, p = idx, idx++;
+        }
+        exist[p] = true;
+    }
+    
+    bool search(string word) {
+        int p = 0;
+        for(auto c : word) {
+            if(next[p][c - 'a']) p = next[p][c - 'a'];
+            else return false;
+        }
+        return exist[p];
+    }
+    
+    bool startsWith(string prefix) {
+        int p = 0;
+        for(auto c : prefix) {
+            if(next[p][c - 'a']) p = next[p][c - 'a'];
+            else return false;
+        }
+        return true;
+    }
+};
+```
+(2) **动态维护**，每个节点为一个结构体，通过 new 动态增加新的树节点。
+```cpp
+// LC 208. 实现 Trie (前缀树)
+class Trie {
+private:
+    array<Trie*, 26> next;
+    bool exist;
+public:
+    Trie():next{}, exist(false){} // 注意 array 的初始化是 {}
+    
+    void insert(string word) {
+        auto p = this;
+        for(auto c : word) {
+            if(p->next[c - 'a']) p = p->next[c - 'a'];
+            else {
+                auto node = new Trie();
+                p = p->next[c - 'a'] = node;
+            }
+        }
+        p->exist = true;
+    }
+    
+    bool search(string word) {
+        auto p = this;
+        for(auto c : word) {
+            if(p->next[c - 'a']) p = p->next[c - 'a'];
+            else return false;
+        }
+        return p->exist;
+    }
+    
+    bool startsWith(string prefix) {
+        auto p = this;
+        for(auto c : prefix) {
+            if(p->next[c - 'a']) p = p->next[c - 'a'];
+            else return false;
+        }
+        return true;
+    }
+};
+```
+
+使用内存池，动态改静态
+```cpp
+template<typename T, size_t N = 50000>
+struct memory_pool{
+    array<T, N> pool;
+    size_t idx;
+    memory_pool() : pool{}, idx(0) {}
+    T* offer(){return &pool[idx++];}
+};
+
+struct node{
+    array<node*, 26> next;
+    bool exist;
+};
+
+class Trie {
+private:
+    memory_pool<node> pool;
+    node* root;
+
+public:
+    Trie():pool(){root = pool.offer();} // 注意 array 的初始化是 {}
+    
+    void insert(string word) {
+        auto p = root;
+        for(auto c : word) {
+            if(p->next[c - 'a']) p = p->next[c - 'a'];
+            else {
+                auto node = pool.offer();
+                p = p->next[c - 'a'] = node;
+            }
+        }
+        p->exist = true;
+    }
+    
+    bool search(string word) {
+        auto p = root;
+        for(auto c : word) {
+            if(p->next[c - 'a']) p = p->next[c - 'a'];
+            else return false;
+        }
+        return p->exist;
+    }
+    
+    bool startsWith(string prefix) {
+        auto p = root;
+        for(auto c : prefix) {
+            if(p->next[c - 'a']) p = p->next[c - 'a'];
+            else return false;
+        }
+        return true;
+    }
+};
+```
+</details>
+
+
+## 9 并查集
+<details>
+<summary>并和查分别指什么？它的时间复杂度为？它有哪些经典的应用？</summary>
+
+- 并：快速合并两个集合；
+- 查：查询元素属于哪个集合，还可以查询集合的大小，元素到根结点距离等。
+
+时间复杂度：使用路径压缩、按秩合并后可达到 $O(\alpha(n))$, $\alpha$ 为阿克曼函数的反函数,可以认为是一个很小的常数，近乎$O(1)$。
+
+应用：常见的应用有**带权并查集**，最小生成树算法中的**Kruskal**和最近公共祖先中的**Tarjan**算法。
+[OI-Wiki](https://oi-wiki.org/topic/dsu-app/)上整理了一些并查集在图论中的应用。
+
+</details>
+
+<details>
+<summary>并查集的优化方法有哪些？</summary>
+
+有**路径压缩**和**按秩合并**两个方法，在算法竞赛的实际代码中，即便不使用按秩合并，代码也往往能够在规定时间内完成任务。在 Tarjan 的论文中，证明了不使用按秩合并、只使用路径压缩的最坏时间复杂度是$O(logn)$。在姚期智的论文中，证明了不使用按秩合并、只使用路径压缩，在平均情况下，时间复杂度依然是 $O(\alpha(n))$。
+</details>
+
+
+<details>
+<summary>并查集的find和union操作如何实现？</summary>
+
+- `find` 操作：
+```cpp
+int find(int i){
+    if(p[i] != i) p[i] = find(p[i]);
+    return p[i];
+}
+```
+- `union` 操作：(注意：不要定义成`union`，c++中`union`是联合体，类似`struct`是结构体)
+
+```cpp
+void Union(int i, int j) {
+    p[find(i)] = p[find(j)];
+}
+```
+例如，
+```cpp
+// LC 547. 省份数量
+class Solution {
+public:
+    vector<int> p;
+    int find(int i){
+        if(p[i] != i) p[i] = find(p[i]);
+        return p[i];
+    }
+    void Union(int i, int j) {p[find(i)] = p[find(j)];}
+    int findCircleNum(vector<vector<int>>& isConnected) {
+        int n = isConnected.size(), res = n;
+        p.resize(n);
+        for(int i = 0; i < n; i++) p[i] = i;
+        for(int i = 0; i < n; i++) for(int j = 0; j < n; j++) {
+            if(isConnected[i][j] != 0 && find(i) != find(j)) {
+                res--, Union(i, j);
+            }
+        }
+        return res;
+    }
+};
 ```
 </details>

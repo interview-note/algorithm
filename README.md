@@ -755,7 +755,7 @@ public:
 <details>
 <summary>并和查分别指什么？它的时间复杂度为？它有哪些经典的应用？</summary>
 
-- 并：快速合并两个集合；
+- 并：快速合并两个集合；   
 - 查：查询元素属于哪个集合，还可以查询集合的大小，元素到根结点距离等。
 
 时间复杂度：使用路径压缩、按秩合并后可达到 $O(\alpha(n))$, $\alpha(n)$ 为阿克曼函数的反函数,可以认为是一个很小的常数，近乎$O(1)$。
@@ -812,5 +812,430 @@ public:
         return res;
     }
 };
+```
+</details>
+
+
+## 10 堆
+<details>
+<summary>堆有哪些操作？时间复杂度是多少？</summary>
+
+堆有插入、弹出堆顶和删除指定元素的操作。插入、删除和弹出均为$O(logn)$，取堆顶元素为$O(1)$。
+</details>
+
+<details>
+<summary>堆如何实现？如何使用up和down操作实现各个操作？</summary>
+
+堆可以通过一个静态数组模拟（从1开始），第`i`位置的左右儿子分别是`2i`和`2i+1`。
+
+- 插入：up(idx++)
+- 取堆顶：heap[1]
+- 弹出堆顶：heap[1] = heap[idx--], down(1)
+- 删除堆中的某个元素：heap[k] = heap[idx--], down(k), up(k)
+
+```cpp
+// LC 703. 数据流中的第 K 大元素
+class KthLargest {
+    // 如果已经有k个元素比当前元素大了，那当前元素必然不是答案
+    vector<int> heap;
+    int idx, k;
+    void up(int x) {
+        if(x != 1 && heap[x / 2] > heap[x]) {
+            swap(heap[x / 2], heap[x]), up(x / 2);
+        }
+    }
+    void down(int x) {
+        if(x * 2 < idx && heap[x * 2] < heap[x]) {
+            swap(heap[x * 2], heap[x]), down(x * 2);
+        } 
+        if(x * 2 + 1 < idx && heap[x * 2 + 1] < heap[x]) {
+            swap(heap[x * 2 + 1], heap[x]), down(x * 2 + 1);
+        }
+    }
+public:
+    KthLargest(int k, vector<int>& nums) {
+        heap.resize(k + 1);
+        this->k = k;
+        idx = 1;
+        for(auto x : nums) {
+            if(idx > k) {
+                if(x > heap[1]) heap[1] = x, down(1);
+            } else {
+                heap[idx] = x, up(idx), idx++;
+            }
+        }
+    }
+    int add(int val) {
+        if(idx > k) {
+            if(val > heap[1]) heap[1] = val, down(1);
+        } else {
+            heap[idx] = val, up(idx), idx++;
+        }
+        return heap[1];
+    }
+};
+```
+</details>
+
+## 11 哈希表
+<details>
+<summary>什么是哈希表？什么是哈希函数？哈希表和离散化有什么区别？</summary>
+
+- 哈希表又称散列表，一种以 "key-value" 形式存储数据的数据结构。
+
+- 哈希函数，是将一个较大值域的输入($>10^9$)，映射到一个较小的值域输出($<10^5$)。对于数值来说，一般采用**取模**的方式。
+
+- 离散化是一种特殊的哈希函数，相比普通的哈希函数，它还具有**保序**的特点。
+</details>
+
+<details>
+<summary>当哈希函数出现碰撞时如何解决？</summary>
+
+通常有**拉链法**和**开放寻址法**。
+- 拉链法（链表实现）
+(1) unordered_set
+```cpp
+// LC 705. 设计哈希集合
+template<typename T, const size_t N = 10010>
+struct memory_pool{
+    array<T, N> pool;
+    size_t ptr;
+    memory_pool():pool{}, ptr(0){}
+    T* offer(){return &pool[ptr++];}
+};
+struct node{
+    int val;
+    node *next;
+    node():val(-1), next(nullptr){}
+};
+const int MOD = 769;
+class MyHashSet {
+    array<node*, 769> hash;
+    memory_pool<node> pool;
+    node* make_node(int val, node* next) {
+        auto p = pool.offer();
+        p->val = val, p->next = next;
+        return p;
+    }
+public:
+    MyHashSet() :hash{}{}
+    
+    void add(int key) {
+        if(contains(key)) return;
+        int idx = key % MOD;
+        auto p = hash[idx];
+        if(!p){
+            hash[idx] = make_node(key, nullptr);
+            return;
+        }
+        while(p->next) p = p->next;
+        p->next = make_node(key, nullptr);
+    }
+    
+    void remove(int key) {
+        int idx = key % MOD;
+        auto p = hash[idx];
+        if(!p) return;
+        if(p->val == key) hash[idx] = p->next;
+        else {
+            auto q = p->next;
+            while(q && q->val != key) p = q, q = q->next;
+            if(q && q->val == key) p->next = q->next;
+        }
+    }
+    
+    bool contains(int key) {
+        int idx = key % MOD;
+        auto p = hash[idx];
+        while(p && p->val != key) p = p->next;
+        if(!p || p->val != key) return false;
+        else return true;
+    }
+};
+```
+(2) unordered_map
+```cpp
+// LC 706. 设计哈希映射
+template<typename T, const size_t N = 10010>
+struct memory_pool{
+    array<T, N> pool;
+    size_t ptr;
+    memory_pool():pool{}, ptr(0){}
+    T* offer(){return &pool[ptr++];}
+};
+struct node{
+    int key, val;
+    node* next;
+};
+const int MOD = 769;
+class MyHashMap {
+    array<node*, 769> hash;
+    memory_pool<node> pool;
+    node* make_node(int key, int val){
+        auto p = pool.offer();
+        p->key = key, p->val = val;
+        return p;
+    }
+public:
+    MyHashMap() :hash{}{}
+    
+    void put(int key, int value) {
+        int idx = key % MOD;
+        if(hash[idx] == nullptr) {
+            hash[idx] = make_node(key, value);
+        }else if(hash[idx]->key == key){
+            hash[idx]->val = value;
+        }else{
+            auto p = hash[idx], q = p->next;
+            while(q && q->key != key) p = q, q = q->next;
+            if(q && q->key == key) q->val = value;
+            else p->next = make_node(key, value);
+        }
+    }
+    
+    int get(int key) {
+        int idx = key % MOD;
+        auto p = hash[idx];
+        while(p && p->key != key) p = p->next;
+        if(p) return p->val;
+        else return -1;
+    }
+    
+    void remove(int key) {
+        if(get(key) == -1) return;
+        int idx = key % MOD;
+        if(hash[idx]->key == key) {
+            hash[idx] = hash[idx]->next;
+        }else {
+            auto p = hash[idx], q = p->next;
+            while(q && q->key != key) p = q, q = q->next;
+            p->next = q->next;
+        }
+    }
+};
+```
+</details>
+
+
+## 12 图论
+
+<details>
+<summary>图有哪些存储方式？什么是图的出度和入度？</summary>
+
+假设，`N` 为节点数， `M` 为边数
+- 邻接矩阵 -> 适合存储稠密图
+```cpp
+int G[N][N]; // array<array<int, N>, N> G;
+```
+- 邻接表   -> 适合存储稀疏图
+```cpp
+array<vector<int>, N> G; // 权重均为 1 
+struct node{
+    int end, val;
+};
+array<vector<node>, N> G; // 带权重
+```
+- 边集
+```cpp
+struct node{
+    int start, end, val;
+}
+array<node, M> edges;
+```
+
+- 出度：起点为某个点的边数
+- 入度：终点为某个点的边数
+</details>
+
+<details>
+<summary>什么是拓扑图？什么是拓扑序列？如何求拓扑序列？</summary>
+
+- 拓扑图：有向无环图
+- 拓扑序列：按某个序列将图中所有节点排序，满足所有边均从前指向后
+- 如何求拓扑序列？等价于如何判断一个图是拓扑图？等价于一个有向图有否存在环？
+    - 维护每个点的入度，每次找入度为0的点加入序列
+    - 使用**队列**维护所有入度已经是0的点
+    - 队列可以用数组模拟，**入队顺序**构成拓扑序列
+    ```cpp
+    // LC 210. 课程表 II
+    vector<int> findOrder(int numCourses, vector<vector<int>>& prerequisites) {
+        vector<int> in(numCourses); // 入度
+        vector<vector<int>> G(numCourses); // 邻接表
+        for(auto x : prerequisites) G[x[1]].push_back(x[0]), in[x[0]] ++;
+        vector<int> q;
+        for(int i = 0; i < numCourses; i++) if(in[i] == 0) q.push_back(i);
+        int idx = 0;
+        while(idx < q.size()) {
+            for(auto x : G[q[idx++]]) {
+                if(--in[x] == 0) 
+                    q.push_back(x);
+            }
+        }
+        return idx == numCourses ? q : vector<int>();
+    }
+    ```
+
+</details>
+
+<details>
+<summary>常见的最短路问题有哪些？分别对应什么解法？如何判断稠密图和稀疏图？</summary>
+
+常见的最短路问题：
+- 单源最短路  
+    - 不存在负权边  
+        - 稠密图：朴素 Dijkstra -> $O(n^2)$  
+        - 稀疏图：堆优化 Dijkstra -> $O(mlogn)$  
+    - 存在负权边  
+        - Bellman-Ford -> $O(mn)$  
+        - SPFA -> $O(m)$, 最坏情况$O(mn)$  
+- 多源最短路  
+    - Floyd -> $O(n^3)$  
+如何判断稠密图和稀疏图？
+- 稠密图：$m \approx n^2$
+- 稀疏图：$m \approx n$
+
+例如，LC 743. 网络延迟时间， N <= 100, M <= 6000
+$m \approx n^2$,为稠密图且无负权边，适合解法：朴素 Dijkstra > SPFA > 堆优化 Dijkstra > Floyd > Bellman-Ford 
+```cpp
+// LC 743. 网络延迟时间
+// 朴素 Dijkstra 84 ms
+int networkDelayTime(vector<vector<int>>& times, int n, int k) {
+    vector<vector<int>>G(n, vector<int>(n, INT_MAX));
+    vector<int> st(n, false), d(n, INT_MAX);
+    for(auto &x:times) G[x[0] - 1][x[1] - 1] = x[2];
+    d[k - 1] = 0;
+    for(int m = 0; m < n; m++) {
+        int u = -1;
+        for(int i = 0; i < n; i++) {
+            if(!st[i] && (u == -1 || d[i] < d[u])) u = i;
+        }
+        if(d[u] == INT_MAX) break;
+        st[u] = true;
+        for(int v = 0; v < n; v++) {
+            if(!st[v] && G[u][v] != INT_MAX)
+                d[v] = min(d[v], d[u] + G[u][v]);
+        }
+    }
+    int res = 0;
+    for(auto x : d) res = max(res, x);
+    return res == INT_MAX ? -1 : res;
+}
+
+// SPFA 84 ms
+int networkDelayTime(vector<vector<int>>& times, int n, int k) {
+    vector<vector<pii>> G(n);
+    vector<int> st(n, false), d(n, INT_MAX);
+    for(auto &x : times) G[x[0] - 1].push_back({x[1] - 1, x[2]});
+    queue<int> q;
+    q.push(k - 1);
+    d[k - 1] = 0, st[k - 1] = true;
+    while(!q.empty()){
+        auto t = q.front();
+        q.pop();
+        st[t] = false;
+        for(auto x : G[t]) 
+            if(d[t] + x.second < d[x.first]) {
+                d[x.first] = d[t] + x.second;
+                if(st[x.first] == false) q.push(x.first), st[x.first] = true;
+            }
+    }
+    int res = 0;
+    for(auto x : d) res = max(res, x);
+    return res == INT_MAX ? -1 : res;
+}
+
+// 堆优化 Dijkstra 96 ms
+int networkDelayTime(vector<vector<int>>& times, int n, int k) {
+    vector<vector<pii>> G(n);
+    vector<int> st(n, false), dis(n, INT_MAX);
+    for(auto &x : times) G[x[0] - 1].push_back({x[1] - 1, x[2]}); // {j, d[i,j]}
+    priority_queue<pii, vector<pii>, greater<pii>> q; // {dis[idx], idx}
+    q.push({0, k - 1});
+    dis[k - 1] = 0;
+    while(!q.empty()) {
+        auto t = q.top();
+        q.pop();
+        if(st[t.second] == false) {
+            st[t.second] = true;
+            for(auto x : G[t.second]) {
+                if(dis[t.second] + x.second < dis[x.first]){
+                    dis[x.first] = dis[t.second] + x.second;
+                    q.push({dis[x.first], x.first});
+                }
+            } 
+        }
+    }
+    int res = 0;
+    for(auto x : dis) res = max(res, x);
+    return res == INT_MAX ? -1 : res;
+}
+
+// Floyd 192 ms
+int networkDelayTime(vector<vector<int>>& times, int n, int k) {
+    vector<vector<int>> G(n, vector<int>(n, 500));
+    for(auto &x : times) G[x[0] - 1][x[1] - 1] = x[2];
+    for(int i = 0; i < n; i++) G[i][i] = 0;
+    for(int k = 0; k < n; k++)
+        for(int i = 0; i < n; i++)
+            for(int j = 0; j < n; j++)
+                G[i][j] = min(G[i][j], G[i][k] + G[k][j]);
+    int res = 0;
+    for(auto x : G[k - 1]) res = max(res, x);
+    return res == 500 ? -1 : res;
+}
+
+// Bellman Ford 200 ms
+int networkDelayTime(vector<vector<int>>& times, int n, int k) {
+    vector<int> d(n, INT_MAX);
+    d[k - 1] = 0;
+    while(n--)
+        for(auto &x : times) 
+            if(d[x[0] - 1] != INT_MAX)
+                d[x[1] - 1] = min(d[x[1] - 1], d[x[0] - 1] + x[2]);
+    int res = 0;
+    for(auto x : d) res = max(res, x);
+    return res == INT_MAX ? -1 : res;
+}
+```
+</details>
+
+<details>
+<summary>如何判断是否存在负权回路？什么时候使用Bellman Ford算法？</summary>
+
+（1）如何判断是否存在负权回路？
+- SPFA：更新dis数组时同时维护cnt数组，若cnt中出现大于n的值，则存在负权回路。
+    - 注意：初始时需要将**所有点**入队！
+- Bellman Ford：外层循环执行超过n次时，dis数组仍然更新时，存在负权回路。
+
+（2）什么时候使用Bellman Ford算法？
+- 有**边数限制**时使用Bellman Ford算法
+
+```cpp
+// LC 743. 网络延迟时间 增加cnt数组
+int networkDelayTime(vector<vector<int>>& times, int n, int k) {
+    vector<vector<pii>> G(n);
+    vector<int> st(n, true), d(n, INT_MAX), cnt(n, 0); // cnt 判断负环
+    for(auto &x : times) G[x[0] - 1].push_back({x[1] - 1, x[2]});
+    queue<int> q;
+    for(int i = 0; i < n; i ++) q.push(i);
+    d[k - 1] = 0;
+    while(!q.empty()){
+        auto t = q.front();
+        q.pop();
+        st[t] = false;
+        if(d[t] == INT_MAX) continue;
+        for(auto x : G[t]) 
+            if(d[t] + x.second < d[x.first]) {
+                d[x.first] = d[t] + x.second;
+                if(st[x.first] == false) 
+                    q.push(x.first), st[x.first] = true;
+                cnt[x.first] = cnt[t] + 1;
+                if(cnt[x.first] > n) return -1; // 判断是否存在负环
+            }
+    }
+    int res = 0;
+    for(auto x : d) res = max(res, x);
+    return res == INT_MAX ? -1 : res;
+}
 ```
 </details>

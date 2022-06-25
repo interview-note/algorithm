@@ -1239,3 +1239,69 @@ int networkDelayTime(vector<vector<int>>& times, int n, int k) {
 }
 ```
 </details>
+
+<details>
+<summary>什么是最小生成树？通常有哪些解法，适用于哪些场景？</summary>
+
+**无向连通图**的最小生成树（Minimum Spanning Tree，MST）为**边权和最小**的生成**树**。简单来说，就是选哪些边之后，所有节点联通，这些边的权值和最小。
+
+- 朴素 Prim 算法: 适合稠密图，时间复杂度$O(n^2)$
+- Kruskal算法: 适合稀疏图，时间复杂度$O(mlogm)$
+
+```cpp
+// LC 1584. 连接所有点的最小费用
+
+// Prim 算法 O(n^2) 108 ms
+int minCostConnectPoints(vector<vector<int>>& p) {
+    vector<vector<int>> G(p.size(), vector<int>(p.size(), INT_MAX));
+    vector<int> st(p.size(), false), d(p.size(), INT_MAX);
+    for(int i = 0; i < p.size(); i++) {
+        for(int j = i + 1; j < p.size(); j++) {
+            int d = abs(p[i][0] - p[j][0]) + abs(p[i][1] - p[j][1]);
+            G[i][j] = d, G[j][i] =  d;
+        }
+    }
+    int res = 0;
+    d[0] = 0;
+    for(int i = 0; i < p.size(); i++) {
+        int t = -1;
+        for(int j = 0; j < p.size(); j++) {
+            if(st[j] == false && (t == -1 || d[j] < d[t]))
+                t = j;
+        }
+        res += d[t], st[t] = true;
+        for(int i = 0; i < p.size(); i++) d[i] = min(d[i], G[t][i]);
+    }
+    return res;
+}
+
+// Kruskal 算法 O(mlogm) = O(n^2logn) 560 ms
+vector<int> f;
+int find(int x) {
+    if(f[x] != x) f[x] = find(f[x]);
+    return f[x];
+}
+int minCostConnectPoints(vector<vector<int>>& p) {
+    vector<array<int, 3>> edges;
+    f.resize(p.size());
+    for(int i = 0; i < p.size(); i++) {
+        for(int j = i + 1; j < p.size(); j++) {
+            int d = abs(p[i][0] - p[j][0]) + abs(p[i][1] - p[j][1]);
+            edges.push_back({d, i, j});
+        }
+    }
+    sort(edges.begin(), edges.end());
+    for(int i = 0; i < p.size(); i++) f[i] = i;
+    int res = 0;
+    for(auto &x : edges){
+        x[1] = find(x[1]), x[2] = find(x[2]);
+        if(x[1] != x[2]) {
+            res += x[0];
+            f[x[1]] = x[2];
+        }
+    }
+    return res;
+}
+```
+
+</details>

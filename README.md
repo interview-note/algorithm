@@ -1305,3 +1305,143 @@ int minCostConnectPoints(vector<vector<int>>& p) {
 ```
 
 </details>
+
+<details>
+<summary>如何判断一个图是不是二分图？</summary>
+
+利用**染色法**判断一个图是不是二分图：
+**二分图**等价于**可以二染色**等价于**图中不存在奇数环**。
+```cpp
+// LC 785. 判断二分图 DFS 二染色法
+vector<int> color;    
+bool dfs(vector<vector<int>>& graph, int u) {
+    for(auto v : graph[u]){
+        if(color[v] == color[u]) return false;
+        if(color[v] == -1) {
+            color[v] = 1 - color[u];
+            if(dfs(graph, v) == false) return false;
+        }
+    }
+    return true;
+}
+bool isBipartite(vector<vector<int>>& graph) {
+    color.resize(graph.size(), -1);
+    for(int i = 0; i < graph.size(); i++) {
+        if(color[i] == -1) {
+            color[i] = 0;
+            if(dfs(graph, i) == false) return false;
+        }
+    }
+    return true;
+}
+```
+
+二分图与二分组合使用：
+```cpp
+// AWC 257. 关押罪犯
+#include<iostream>
+#include<vector>
+using namespace std;
+typedef pair<int, int> pii;
+
+vector<vector<pii>> G;
+vector<int> color;
+
+bool dfs(int u, int mid) {
+    for(auto v : G[u]) {
+        if(v.second <= mid) continue;
+        if(color[v.first] == color[u]) return false;
+        if(color[v.first] == -1) {
+            color[v.first] = 1 - color[u];
+            if(dfs(v.first, mid) == false) return false;
+        }
+    }
+    return true;
+}
+
+bool check(int mid) {
+    color = vector<int>(G.size(), -1);
+    for(int i = 0; i < G.size(); i++) {
+        if(color[i] == -1) {
+            color[i] = 0;
+            if(dfs(i, mid) == false) return false;
+        }
+    }
+    return true;
+}
+
+int main(){
+    int n, m;
+    cin >> n >> m;
+    G.resize(n + 1);
+    for(int i = 0; i < m; i++) {
+        int a, b, c;
+        cin >> a >> b >> c;
+        G[a].push_back({b, c}), G[b].push_back({a, c});
+    }
+    int l = 0, r = 1e9 + 10;
+    while(l < r) {
+        int mid = l + r >> 1;
+        // check: 怒气值大于mid的边可以构成二分图
+        if(check(mid)) r = mid; 
+        else l = mid + 1;
+    }
+    cout << l;
+    return 0;
+}
+```
+
+</details>
+
+<details>
+<summary>如何求一个二分图的最大匹配？
+</summary>
+
+
+利用**匈牙利算法**找二分图的最大匹配。若交换后可以增加匹配数就交换，通过dfs实现递归寻找过程。
+
+在目标检测、车道线检测等场景，可以利用匈牙利算法寻找**预测的目标**与**真值**的最大匹配，作为评测指标。
+**例如**，预测了`n`条车道线，真值为`m`条车道线，我们可以设定一个阈值（例如两条车道线之间重叠的部分占超过各自的`75%`，重叠表示在同一距离，横向偏差小于 `0.5` 米等）来判断`pred_i`和`gt_j`是否为一对匹配，之后使用匈牙利算法计算这个二分图的最大匹配。
+
+**棋盘匹配**是一个经典的匈牙利算法应用场景。我们可以将相邻的格子分别染色为黑白，**黑色格子和白色格子之间的边构成二分图**，可将问题转化为二分图求最大匹配。
+```cpp
+// LCP 04. 覆盖 (https://leetcode.cn/problems/broken-board-dominoes/)
+int n, m;
+vector<int> st, match, G;
+int dx[4] = {-1, 0, 1, 0}, dy[4] = {0, -1, 0, 1};
+bool find(int x, int y) {
+    for(int i = 0; i < 4; i++) {
+        int xx = x + dx[i], yy = y + dy[i];
+        if(xx < 0 || xx >= n || yy < 0 || yy >= m 
+            || G[xx * m + yy] == false || st[xx * m + yy] == true) continue; 
+        st[xx * m + yy] = true;
+        if(match[xx * m + yy] == -1 ||
+                find(match[xx * m + yy] / m, match[xx * m + yy] % m)) {
+            match[xx * m + yy] = x * m + y;
+            return true;
+        }
+    }
+    return false;
+}
+int domino(int n, int m, vector<vector<int>>& broken) {
+    this->n = n, this->m = m;
+    match.resize(n*m, -1), G.resize(n*m, true);
+    for(auto &t : broken)  G[t[0] * m + t[1]] = false;
+    int res = 0;
+    for(int i = 0; i < n; i++) {
+        for(int j = 0; j < m; j++) {
+            if((i + j) % 2 == 1 && G[i * m + j] == true) {
+                st = vector<int>(n*m, false);
+                if(find(i, j)) res ++;
+            }
+        }
+    }
+    return res;
+}
+```
+</details>
+<details>
+<summary>test</summary>
+
+test
+</details>

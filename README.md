@@ -1440,6 +1440,108 @@ int domino(int n, int m, vector<vector<int>>& broken) {
 }
 ```
 </details>
+
+## 13 数论
+<details>
+<summary>如何快速判断一个数是否是质数？如何分解质因数？有哪些质数筛法？如何求一个数的约数？</summary>
+
+- 判断质数：（试除法）遍历从2到$\sqrt n$，时间复杂度$O(\sqrt n)$
+- 分解质因数：（试除法）遍历从2到$\sqrt n$，直到除为1终止，**最坏**时间复杂度$O(\sqrt n)$
+- 求约数：（试除法）遍历从2到$\sqrt n$，时间复杂度$O(\sqrt n)$
+- 质数筛：
+    - 埃式筛法：时间复杂度$O(nloglogn)$，从小到大筛掉所有**质数**的倍数。
+    - 线性筛法：时间复杂度$O(n)$，只会被最小质因数筛去。
+
+> 注意：`sqrt`操作需要替换成 `i < n / i`。
+```cpp
+// LC 204. 计数质数
+// 线性筛
+int countPrimes(int n) {
+    vector<int> p, st(n, true); // p 动态维护已经找到的质数
+    for(int i = 2; i < n; i++) {
+        if(st[i] == true) p.push_back(i);
+        for(auto x : p) { // 不是只对质数操作！
+            if(x * i < n) st[x * i] = false;
+            else break; // 注意检查 x*i是否会溢出！
+            if(i % x == 0) break;
+        }
+    }
+    return p.size();
+}
+
+// 埃式筛
+int countPrimes(int n) {
+    vector<int> st(n, true);
+    int res = 0;
+    for(int i = 2; i < n; i++) {
+        if(st[i] == true) {
+            res ++;
+            for(int j = 2; i * j < n; j++) st[i * j] = false;
+        }
+    }
+    return res;
+}
+```
+</details>
+
+<details>
+<summary>如何求两个数的最大公约数和最小公倍数？</summary>
+
+欧几里得算法（辗转相除法）原理：$(a, b) = (b, a \mod b)$, `()`表示求最大公因数  
+
+最小公倍数 = a*b / 最大公因数
+
+时间复杂度$O(logn)$
+```cpp
+// ACW 3642. 最大公约数和最小公倍数
+#include<iostream>
+using namespace std;
+int gcd(int a, int b) {
+    return b == 0 ? a : gcd(b, a % b);
+}
+int main(){
+    int a, b;
+    cin >> a >> b;
+    cout << gcd(a, b) << ' ' << a * b / gcd(a, b) << endl;
+    return 0;
+}
+```
+</details>
+
+<details>
+<summary>什么是快速幂？</summary>
+
+求解问题：$a^k \mod p = ?$
+
+原理：`k`拆分成若干个2的次幂和， $k = ? 2^0 + ? 2^1 + ... + ?2^{logk}$, `?`处是`k`的二进制表示。  
+原问题就表示为$a^k \mod p = a^{? 2^0 + ? 2^1 + ... + ?2^{logk}} \mod p$
+
+$ = (a^{? 2^0} * a^{? 2^1} * ... * a^{?2^{logk}}) \mod p $
+
+```cpp
+// LC 50. Pow(x, n) 没有求 mod 的操作
+double myPow(double x, int n) {
+    if(n == INT_MIN) // 特判 INT_MIN，-INT_MIN会溢出
+        if(x == 1.0 || x == -1.0) return 1;
+        else return 0;
+    if(n < 0) // 特判 负数
+        return 1.0 / myPow(x, -n);
+    double res = 1.0;
+    while(n) {
+        if(n & 1) res *= x;
+        x *= x;
+        n >>= 1;
+    }
+    return res;
+}
+```
+</details>
+
+<details>
+<summary>什么是约数定理？什么是欧拉函数？什么是中国剩余定理？。。。</summary>
+不可能考～
+</details>
+
 <details>
 <summary>test</summary>
 
